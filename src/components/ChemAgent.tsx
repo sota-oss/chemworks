@@ -40,7 +40,7 @@ export default function ChemAgent() {
     const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
 
     const agent = new PageAgent({
-      model: "google/gemma-3-27b-it:free",
+      model: "google/gemma-3-12b-it:free",
       // Route through our server proxy to avoid OpenRouter browser guardrail restrictions
       baseURL: `${window.location.origin}/api/agent-proxy`,
       apiKey: "proxy", // key is handled server-side; required non-empty string
@@ -148,15 +148,14 @@ export default function ChemAgent() {
               <p className="text-xs text-blue-200">Llama 3.2 Vision · OpenRouter</p>
             </div>
             <span
-              className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${
-                status === "running"
-                  ? "bg-yellow-500/20 text-yellow-300"
-                  : status === "completed"
+              className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${status === "running"
+                ? "bg-yellow-500/20 text-yellow-300"
+                : status === "completed"
                   ? "bg-green-500/20 text-green-300"
                   : status === "error"
-                  ? "bg-red-500/20 text-red-300"
-                  : "bg-zinc-600/40 text-zinc-300"
-              }`}
+                    ? "bg-red-500/20 text-red-300"
+                    : "bg-zinc-600/40 text-zinc-300"
+                }`}
             >
               {STATUS_MESSAGES[status]}
             </span>
