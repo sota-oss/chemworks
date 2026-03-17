@@ -21,9 +21,21 @@ export default function Home() {
   const [orchestration, setOrchestration] = useState<OrchestrationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedElements, setSelectedElements] = useState<ElementData[]>([]);
+  const [selectedCompounds, setSelectedCompounds] = useState<string[]>([]); // compounds from previous reactions
+  const [productHistory, setProductHistory] = useState<string[]>([]); // all produced compounds
   const [catalystElements, setCatalystElements] = useState<ElementData[]>([]);
   const [conditionType, setConditionType] = useState<string>("none");
   const [customCondition, setCustomCondition] = useState<string>("");
+
+  /** Parse product formulas from equation string like "3Fe + 2O2 -> Fe3O4" */
+  const parseProducts = (equation: string): string[] => {
+    const sides = equation.split(/->/)[1] || equation.split(/→/)[1];
+    if (!sides) return [];
+    return sides
+      .split("+")
+      .map((p) => p.trim().replace(/^\d+\s*/, "").trim()) // strip coefficients
+      .filter(Boolean);
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { over, active } = event;
@@ -50,6 +62,17 @@ export default function Home() {
     setSelectedElements((prev) => [...prev, element]);
   };
 
+  // Use a previously produced compound in a new reaction
+  const handleUseProduct = (formula: string) => {
+    setSelectedCompounds((prev) =>
+      prev.includes(formula) ? prev : [...prev, formula]
+    );
+  };
+
+  const handleRemoveCompound = (index: number) => {
+    setSelectedCompounds((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleEvaluate = async () => {
     if (selectedElements.length === 0) return;
     
@@ -62,6 +85,7 @@ export default function Home() {
 
     try {
       const symbols = selectedElements.map(el => el.symbol);
+      const allReactants = [...symbols, ...selectedCompounds];
       const catSymbols = catalystElements.map(el => el.symbol);
 
       let conditionDesc = "Điều kiện thường";
@@ -77,7 +101,7 @@ export default function Home() {
       const res = await fetch("/api/orchestrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ elements: symbols, condition: conditionDesc }),
+        body: JSON.stringify({ elements: allReactants, condition: conditionDesc }),
       });
 
       const data = await res.json();
@@ -87,6 +111,15 @@ export default function Home() {
       }
 
       setOrchestration(data);
+
+      // Store products from successful reactions
+      if (data.isValid && data.equation) {
+        const newProducts = parseProducts(data.equation);
+        setProductHistory((prev) => {
+          const unique = newProducts.filter((p) => !prev.includes(p));
+          return [...prev, ...unique];
+        });
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -128,6 +161,10 @@ export default function Home() {
             setCustomCondition={setCustomCondition}
             catalystElements={catalystElements}
             onRemoveCatalyst={handleRemoveCatalyst}
+            selectedCompounds={selectedCompounds}
+            onRemoveCompound={handleRemoveCompound}
+            productHistory={productHistory}
+            onUseProduct={handleUseProduct}
           />
         </DndContext>
         
