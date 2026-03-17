@@ -15,6 +15,9 @@ interface ElementData {
 
 interface DraggableElementProps {
   element: ElementData;
+  onClickAdd?: (element: ElementData) => void;
+  dimmed?: boolean;
+  highlighted?: boolean;
 }
 
 const categoryColors: Record<string, string> = {
@@ -30,7 +33,7 @@ const categoryColors: Record<string, string> = {
   "actinide": "bg-neutral-500/20 text-neutral-400 border-neutral-500/50 hover:bg-neutral-500/30",
 };
 
-export default function DraggableElement({ element }: DraggableElementProps) {
+export default function DraggableElement({ element, onClickAdd, dimmed, highlighted }: DraggableElementProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `element-${element.symbol}`,
     data: element,
@@ -53,16 +56,30 @@ export default function DraggableElement({ element }: DraggableElementProps) {
       style={{ ...style, ...gridArea }}
       {...listeners}
       {...attributes}
+      onClick={(e) => {
+        // Only fire click-to-add when not ending a drag
+        if (!isDragging) {
+          e.stopPropagation();
+          onClickAdd?.(element);
+        }
+      }}
       className={clsx(
-        "relative flex flex-col items-center justify-center p-1 rounded border shadow-sm transition-opacity cursor-grab active:cursor-grabbing select-none hover:scale-105 z-10",
+        "group relative flex flex-col items-center justify-center p-1 rounded border shadow-sm transition-all duration-200 cursor-pointer active:cursor-grabbing select-none z-10",
         colorClass,
-        isDragging ? "opacity-50 scale-110 z-50 shadow-xl" : "opacity-100"
+        dimmed
+          ? "opacity-15 grayscale scale-95 pointer-events-none"
+          : highlighted
+          ? "scale-110 ring-2 ring-white/60 shadow-lg shadow-white/10 opacity-100 z-20"
+          : "hover:scale-110 opacity-100",
+        isDragging ? "opacity-50 scale-110 z-50 shadow-xl" : ""
       )}
-      title={element.name}
+      title={`${element.name} — Click để thêm / Kéo thả vào ô phản ứng`}
     >
       <span className="absolute top-0.5 left-1 text-[8px] font-mono opacity-60">
         {element.atomicNumber}
       </span>
+      {/* click-to-add hint icon */}
+      <span className="absolute top-0.5 right-0.5 text-[8px] opacity-0 group-hover:opacity-70 transition-opacity">+</span>
       <strong className="text-xl font-bold leading-none mt-2">
         {element.symbol}
       </strong>

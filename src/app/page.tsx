@@ -25,56 +25,54 @@ export default function Home() {
   const [conditionType, setConditionType] = useState<string>("none");
   const [customCondition, setCustomCondition] = useState<string>("");
 
-  // DnD: drag from periodic table to builder or catalyst zone
   const handleDragEnd = (event: DragEndEvent) => {
     const { over, active } = event;
     const element = active.data.current as ElementData;
     if (!element) return;
-    if (over?.id === "reaction-builder-zone") {
+
+    if (over && over.id === "reaction-builder-zone") {
       setSelectedElements((prev) => [...prev, element]);
-    } else if (over?.id === "catalyst-zone") {
+    } else if (over && over.id === "catalyst-zone") {
       setCatalystElements((prev) => [...prev, element]);
     }
   };
 
-  // Single click: add element to reaction builder
-  const handleElementClick = (element: ElementData) => {
-    if (conditionType === "catalyst") {
-      setCatalystElements((prev) => [...prev, element]);
-    } else {
-      setSelectedElements((prev) => [...prev, element]);
-    }
-  };
-
-  const handleRemoveElement = (index: number) =>
+  const handleRemoveElement = (index: number) => {
     setSelectedElements((prev) => prev.filter((_, i) => i !== index));
+  };
 
-  const handleRemoveCatalyst = (index: number) =>
+  const handleRemoveCatalyst = (index: number) => {
     setCatalystElements((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Single-click to add element to reaction zone
+  const handleClickAdd = (element: ElementData) => {
+    setSelectedElements((prev) => [...prev, element]);
+  };
 
   const handleEvaluate = async () => {
     if (selectedElements.length === 0) return;
+    
     setIsLoading(true);
     setOrchestration(null);
     setError(null);
 
-    await new Promise((res) => setTimeout(res, 600));
+    // Fake delay for demo "AI thinking"
+    await new Promise((res) => setTimeout(res, 800));
 
     try {
-      const symbols = selectedElements.map((el) => el.symbol);
-      const catSymbols = catalystElements.map((el) => el.symbol);
+      const symbols = selectedElements.map(el => el.symbol);
+      const catSymbols = catalystElements.map(el => el.symbol);
 
       let conditionDesc = "Điều kiện thường";
       if (conditionType === "temperature") conditionDesc = "Có đun nóng (Nhiệt độ cao)";
       else if (conditionType === "pressure") conditionDesc = "Áp suất cao";
-      else if (conditionType === "light") conditionDesc = "Điều kiện ánh sáng / UV";
-      else if (conditionType === "electric") conditionDesc = "Điều kiện tia lửa điện / mồi lửa";
       else if (conditionType === "catalyst") {
-        conditionDesc =
-          catSymbols.length > 0
-            ? `Có chất xúc tác: ${catSymbols.join(", ")}`
-            : "Có chất xúc tác (chưa xác định)";
-      } else if (conditionType === "custom") conditionDesc = `Điều kiện đặc biệt: ${customCondition}`;
+        conditionDesc = catSymbols.length > 0 
+          ? `Có chất xúc tác: ${catSymbols.join(", ")}`
+          : "Có chất xúc tác (chưa xác định)";
+      }
+      else if (conditionType === "custom") conditionDesc = `Điều kiện đặc biệt: ${customCondition}`;
 
       const res = await fetch("/api/orchestrate", {
         method: "POST",
@@ -83,102 +81,88 @@ export default function Home() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to analyze reaction.");
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to analyze reaction.");
+      }
+
       setOrchestration(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(typeof err === "string" ? err : "An unknown error occurred");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const hasResult = orchestration !== null;
-  const isValid = orchestration?.isValid;
-
   return (
-    <main className="min-h-screen bg-zinc-950 overflow-x-hidden">
-      {/* Ambient glow */}
-      <div className="fixed top-0 left-1/4 w-96 h-96 bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
+    <main className="min-h-screen bg-zinc-950 relative overflow-hidden flex flex-col items-center py-12 px-4 sm:px-6">
+      <div className="absolute top-0 w-full h-96 bg-blue-500/5 blur-[150px] pointer-events-none rounded-full" />
 
-      <div className="relative z-10 max-w-[1600px] mx-auto px-4 py-6 flex flex-col gap-6">
-        {/* ── Title ── */}
-        <div className="text-center">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400 tracking-tight">
-            ⚗️ Virtual Chemistry Lab
-          </h1>
-          <p className="text-zinc-500 text-sm mt-1">
-            Click hoặc kéo thả nguyên tố để xây dựng phản ứng hoá học
-          </p>
-        </div>
+      <div className="z-10 w-full max-w-2xl text-center mb-8">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4 tracking-tight">
+          Virtual Chemistry Lab
+        </h1>
+        <p className="text-zinc-400 text-lg">
+          Describe what you want to mix, and the AI will simulate the reaction.
+        </p>
+      </div>
 
-        {/* ── TOP ROW: Periodic Table (left) + Reaction Builder (right) ── */}
+      <div
+        className="z-10 w-full max-w-6xl flex flex-col gap-6 items-center"
+        aria-label="Reaction Form Area"
+      >
         <DndContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4 items-start">
-            {/* LEFT: Periodic Table */}
-            <div className="bg-black/20 rounded-2xl border border-white/5 p-3">
-              <PeriodicTable onElementClick={handleElementClick} />
-            </div>
-
-            {/* RIGHT: Reaction Builder */}
-            <div className="bg-black/30 rounded-2xl border border-white/5 p-4 min-h-[380px] flex flex-col">
-              <ReactionBuilder
-                selectedElements={selectedElements}
-                onRemoveElement={handleRemoveElement}
-                onEvaluate={handleEvaluate}
-                isLoading={isLoading}
-                conditionType={conditionType}
-                setConditionType={setConditionType}
-                customCondition={customCondition}
-                setCustomCondition={setCustomCondition}
-                catalystElements={catalystElements}
-                onRemoveCatalyst={handleRemoveCatalyst}
-              />
-            </div>
-          </div>
+          <PeriodicTable onClickAdd={handleClickAdd} />
+          <ReactionBuilder 
+            selectedElements={selectedElements} 
+            onRemoveElement={handleRemoveElement} 
+            onEvaluate={handleEvaluate}
+            isLoading={isLoading}
+            conditionType={conditionType}
+            setConditionType={setConditionType}
+            customCondition={customCondition}
+            setCustomCondition={setCustomCondition}
+            catalystElements={catalystElements}
+            onRemoveCatalyst={handleRemoveCatalyst}
+          />
         </DndContext>
-
-        {/* ── Error ── */}
+        
         {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm">
+          <div className="w-full max-w-2xl mx-auto p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl mt-4">
             {error}
           </div>
         )}
 
-        {/* ── Invalid reaction notice ── */}
-        {hasResult && !isValid && (
-          <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 rounded-xl">
-            <strong className="block text-base mb-1">⚠️ Không Thể Phản Ứng</strong>
-            <p className="text-sm opacity-90">{orchestration.message}</p>
+        {orchestration && !orchestration.isValid && (
+          <div className="w-full max-w-2xl mx-auto p-4 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 rounded-xl mt-4 whitespace-pre-wrap leading-relaxed">
+            <strong className="block mb-2 text-xl">Không Thể Phản Ứng</strong>
+            {orchestration.message}
           </div>
         )}
 
-        {/* ── BOTTOM ROW: Simulation (left) + Explanation (right) ── */}
-        {hasResult && isValid && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {/* LEFT: Animation / Simulation */}
-            <div className="bg-black/30 rounded-2xl border border-white/5 p-4 flex flex-col gap-3">
-              <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Mô phỏng phản ứng</h3>
-              {orchestration.catalystsOrConditions && orchestration.catalystsOrConditions.length > 0 && (
-                <div className="text-xs bg-blue-500/10 border border-blue-500/20 text-blue-300 rounded-lg p-2">
-                  <strong>Điều kiện / Xúc tác:</strong> {orchestration.catalystsOrConditions.join(", ")}
-                </div>
-              )}
-              <SimulationArea reaction={{ effects: orchestration.animationTriggers || [] }} />
-            </div>
-
-            {/* RIGHT: Explanation */}
-            <div className="bg-black/30 rounded-2xl border border-white/5 p-5 flex flex-col gap-4">
-              {/* Equation */}
-              <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/5 border border-blue-500/20 rounded-xl p-4">
-                <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Phương trình</p>
-                <p className="font-mono text-blue-300 text-lg font-bold">{orchestration.equation}</p>
+        {orchestration && orchestration.isValid && (
+          <div className="w-full flex flex-col gap-6 items-center">
+            {orchestration.catalystsOrConditions && orchestration.catalystsOrConditions.length > 0 && (
+              <div className="w-full max-w-2xl mx-auto p-3 text-sm bg-blue-500/10 border border-blue-500/20 text-blue-300 rounded-lg whitespace-pre-wrap leading-relaxed">
+                <strong>Điều kiện/Xúc tác cần thiết tự động thêm vào:</strong> {orchestration.catalystsOrConditions.join(", ")}
               </div>
-
-              {/* Explanation text */}
-              <div>
-                <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Giải thích</p>
-                <div className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">
+            )}
+            
+            {/* SimulationArea expects reaction.effects */}
+            <SimulationArea reaction={{ effects: orchestration.animationTriggers || [] }} />
+            
+            <div className="w-full max-w-4xl bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="bg-gradient-to-r from-blue-500/10 to-transparent p-6 border-b border-white/5 whitespace-pre-wrap leading-relaxed">
+                <h3 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 tracking-tight">
+                  <span className="font-mono text-blue-400 mr-3 opacity-80 select-all">{orchestration.equation}</span>
+                </h3>
+              </div>
+              <div className="p-6 md:p-8 space-y-6">
+                <div className="text-zinc-300 prose prose-invert prose-lg max-w-none prose-p:leading-relaxed whitespace-pre-wrap">
                   {orchestration.explanation}
                 </div>
               </div>
