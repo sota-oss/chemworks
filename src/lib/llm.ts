@@ -14,7 +14,7 @@ export async function explainReaction(reaction: Reaction, openRouterApiKey?: str
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free", // or a suitable free model
+        model: "arcee-ai/trinity-mini:free", // tested: works, JSON mode supported, good chemistry
         messages: [
           {
             role: "system",
@@ -100,7 +100,7 @@ export async function orchestrateReaction(elements: string[], condition: string,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "arcee-ai/trinity-mini:free",
         response_format: { type: "json_object" },
         messages: [{ role: "system", content: prompt }]
       }),
