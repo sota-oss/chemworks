@@ -40,7 +40,7 @@ export default function ChemAgent() {
     const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
 
     const agent = new PageAgent({
-      model: "meta-llama/llama-3.2-11b-vision-instruct:free",
+      model: "google/gemma-3-27b-it:free", // ✅ verified: vision works (200 OK), free
       baseURL: "https://openrouter.ai/api/v1",
       apiKey,
       language: "en-US", // page-agent only supports en-US / zh-CN
