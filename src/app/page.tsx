@@ -5,6 +5,7 @@ import { DndContext, DragEndEvent } from "@dnd-kit/core";
 import PeriodicTable from "@/components/PeriodicTable";
 import ReactionBuilder from "@/components/ReactionBuilder";
 import SimulationArea from "@/components/SimulationArea";
+import ChemAgent from "@/components/ChemAgent";
 import { OrchestrationResult } from "@/lib/llm";
 
 interface ElementData {
@@ -207,6 +208,8 @@ export default function Home() {
           </div>
         )}
       </div>
+      {/* ChemAgent floating panel (page-agent + OpenRouter vision) */}
+      <ChemAgent />
     </main>
   );
 }
