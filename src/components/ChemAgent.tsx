@@ -40,7 +40,7 @@ export default function ChemAgent() {
     const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
 
     const agent = new PageAgent({
-      model: "qwen/qwen3-32b", // page-agent is built for Qwen — best compatibility
+      model: "qwen/qwen3-vl-32b-instruct", // Qwen3 VL vision model for page-agent
       // Route through our server proxy to avoid OpenRouter browser guardrail restrictions
       baseURL: `${window.location.origin}/api/agent-proxy`,
       apiKey: "proxy", // key is handled server-side; required non-empty string
@@ -145,7 +145,7 @@ export default function ChemAgent() {
             <span className="text-xl">🤖</span>
             <div>
               <p className="font-bold text-sm text-white">ChemAgent AI</p>
-              <p className="text-xs text-blue-200">Qwen3 32B · Groq</p>
+              <p className="text-xs text-blue-200">Qwen3-VL 32B · OpenRouter</p>
             </div>
             <span
               className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${status === "running"

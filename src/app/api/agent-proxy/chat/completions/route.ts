@@ -1,35 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Proxy route for page-agent → Groq API
- * Groq has no data policy guardrails for free tier.
+ * Proxy route for page-agent → OpenRouter
+ * Injects provider overrides to bypass data policy guardrails.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY;
 
-    // Groq doesn't need provider override — no guardrail restrictions
-    const groqBody = {
+    const enrichedBody = {
       ...body,
-      // Ensure vision model is used
-      model: body.model || "meta-llama/llama-4-scout-17b-16e-instruct",
+      provider: {
+        ...(body.provider || {}),
+        data_collection: "allow",
+        allow_fallbacks: true,
+      },
     };
 
-    console.log("[agent-proxy/groq] model:", groqBody.model, "msgs:", groqBody.messages?.length);
+    console.log("[agent-proxy] model:", enrichedBody.model, "msgs:", enrichedBody.messages?.length);
 
-    const orRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://sota-oss.github.io/chemworks",
+        "X-Title": "SOTA ChemWorks",
       },
-      body: JSON.stringify(groqBody),
+      body: JSON.stringify(enrichedBody),
     });
 
     const data = await orRes.json();
     if (!orRes.ok) {
-      console.error("[agent-proxy/groq] error:", orRes.status, JSON.stringify(data).substring(0, 200));
+      console.error("[agent-proxy] error:", orRes.status, JSON.stringify(data).substring(0, 200));
     }
     return NextResponse.json(data, { status: orRes.status });
   } catch (err) {

@@ -1,17 +1,19 @@
 import { Reaction } from "./chemistry";
 
-export async function explainReaction(reaction: Reaction, groqApiKey?: string): Promise<string> {
-  if (!groqApiKey || groqApiKey === "") return reaction.explanation;
+export async function explainReaction(reaction: Reaction, apiKey?: string): Promise<string> {
+  if (!apiKey || apiKey === "") return reaction.explanation;
 
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${groqApiKey}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        "HTTP-Referer": "https://sota-oss.github.io/chemworks",
+        "X-Title": "SOTA ChemWorks",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "qwen/qwen3.5-9b",
         messages: [
           {
             role: "system",
@@ -26,7 +28,7 @@ export async function explainReaction(reaction: Reaction, groqApiKey?: string): 
     });
 
     if (!response.ok) {
-      console.warn("Groq API failed, using fallback explanation");
+      console.warn("OpenRouter API failed, using fallback explanation");
       return reaction.explanation;
     }
 
@@ -47,10 +49,10 @@ export interface OrchestrationResult {
   explanation?: string;
 }
 
-export async function orchestrateReaction(elements: string[], condition: string, groqApiKey?: string): Promise<OrchestrationResult> {
+export async function orchestrateReaction(elements: string[], condition: string, apiKey?: string): Promise<OrchestrationResult> {
   const defaultFail: OrchestrationResult = { isValid: false, message: "Không có phản ứng hóa học nào xảy ra giữa các chất này trong điều kiện được cho." };
 
-  const finalApiKey = groqApiKey || process.env.GROQ_API_KEY;
+  const finalApiKey = apiKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY;
 
   if (!finalApiKey || finalApiKey === "") {
     // Fallback logic for demo if no API key
@@ -90,23 +92,24 @@ export async function orchestrateReaction(elements: string[], condition: string,
       "explanation": "Detailed explanation of the reaction in Vietnamese, including energy and observations."
     }`;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${finalApiKey}`,
         "Content-Type": "application/json",
+        "HTTP-Referer": "https://sota-oss.github.io/chemworks",
+        "X-Title": "SOTA ChemWorks",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "qwen/qwen3.5-9b",
         response_format: { type: "json_object" },
         messages: [{ role: "system", content: prompt }],
-        temperature: 0.3,
-        max_completion_tokens: 1024,
+        provider: { data_collection: "allow", allow_fallbacks: true },
       }),
     });
 
     if (!response.ok) {
-      console.error("Groq response not ok:", response.status, response.statusText);
+      console.error("OpenRouter response not ok:", response.status, response.statusText);
       return defaultFail;
     }
 
