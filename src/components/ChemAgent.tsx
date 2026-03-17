@@ -40,9 +40,10 @@ export default function ChemAgent() {
     const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
 
     const agent = new PageAgent({
-      model: "nvidia/nemotron-nano-12b-v2-vl:free", // NVIDIA VL model - less restrictive data policy
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey,
+      model: "google/gemma-3-27b-it:free",
+      // Route through our server proxy to avoid OpenRouter browser guardrail restrictions
+      baseURL: `${window.location.origin}/api/agent-proxy`,
+      apiKey: "proxy", // key is handled server-side; required non-empty string
       language: "en-US", // page-agent only supports en-US / zh-CN
       maxSteps: 20,
       instructions: {
