@@ -1,40 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Proxy route for page-agent → OpenRouter
- * Injects provider overrides to bypass data policy guardrails.
+ * Proxy route for page-agent → Groq API
+ * Groq has no data policy guardrails for free tier.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
 
-    // Force data_collection=allow to bypass account-level privacy restrictions
-    const enrichedBody = {
+    // Groq doesn't need provider override — no guardrail restrictions
+    const groqBody = {
       ...body,
-      provider: {
-        ...(body.provider || {}),
-        data_collection: "allow",
-        allow_fallbacks: true,
-      },
+      // Ensure vision model is used
+      model: body.model || "meta-llama/llama-4-scout-17b-16e-instruct",
     };
 
-    console.log("[agent-proxy] model:", enrichedBody.model, "msgs:", enrichedBody.messages?.length);
+    console.log("[agent-proxy/groq] model:", groqBody.model, "msgs:", groqBody.messages?.length);
 
-    const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const orRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://sota-oss.github.io/chemworks",
-        "X-Title": "SOTA ChemWorks",
       },
-      body: JSON.stringify(enrichedBody),
+      body: JSON.stringify(groqBody),
     });
 
     const data = await orRes.json();
     if (!orRes.ok) {
-      console.error("[agent-proxy] OpenRouter error:", orRes.status, JSON.stringify(data).substring(0, 200));
+      console.error("[agent-proxy/groq] error:", orRes.status, JSON.stringify(data).substring(0, 200));
     }
     return NextResponse.json(data, { status: orRes.status });
   } catch (err) {
@@ -42,3 +37,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Proxy error" }, { status: 500 });
   }
 }
+

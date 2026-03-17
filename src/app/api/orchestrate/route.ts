@@ -9,8 +9,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing elements array" }, { status: 400 });
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY;
-    console.log("Calling orchestrate with key:", apiKey ? apiKey.substring(0, 10) + "..." : "NONE", elements, condition);
+    const apiKey = process.env.GROQ_API_KEY;
+    console.log("Calling orchestrate with Groq key:", apiKey ? apiKey.substring(0, 10) + "..." : "NONE", elements, condition);
     const result = await orchestrateReaction(elements, condition, apiKey);
     console.log("Orchestrate returned:", result);
 
