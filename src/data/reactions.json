@@ -1,0 +1,26 @@
+[
+  {
+    "reactants": ["Na", "H2O"],
+    "equation": "2Na + 2H2O → 2NaOH + H2",
+    "type": "Single Replacement (Exothermic)",
+    "effects": ["bubbles", "heat", "glow"],
+    "energy": "exothermic",
+    "explanation": "Sodium reacts violently with water. This single replacement reaction produces sodium hydroxide and hydrogen gas, releasing significant heat (exothermic). The hydrogen gas can ignite due to the heat generated."
+  },
+  {
+    "reactants": ["H2", "O2"],
+    "equation": "2H2 + O2 → 2H2O",
+    "type": "Synthesis / Combustion (Exothermic)",
+    "effects": ["flash", "heat", "boom"],
+    "energy": "exothermic",
+    "explanation": "Hydrogen gas combines with oxygen gas in a highly exothermic synthesis reaction (often explosive) to form water. This combustion produces a flash of light, loud boom, and rapid release of energy."
+  },
+  {
+    "reactants": ["HCl", "NaOH"],
+    "equation": "HCl + NaOH → NaCl + H2O",
+    "type": "Neutralization (Exothermic)",
+    "effects": ["heat"],
+    "energy": "exothermic",
+    "explanation": "This is an acid-base neutralization. Hydrochloric acid reacts with sodium hydroxide to form table salt (NaCl) and water. It produces heat but is less violent than sodium and water."
+  }
+]
