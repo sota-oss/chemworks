@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DndContext, DragEndEvent } from "@dnd-kit/core";
 import PeriodicTable from "@/components/PeriodicTable";
 import ReactionBuilder from "@/components/ReactionBuilder";
 import SimulationArea from "@/components/SimulationArea";
 import ChemAgent from "@/components/ChemAgent";
 import { OrchestrationResult } from "@/lib/llm";
+import elementsData from "@/data/periodicTable.json";
 
 interface ElementData {
   atomicNumber: number;
@@ -15,6 +16,20 @@ interface ElementData {
   period: number;
   group: number;
   category: string;
+}
+
+// Type for exposed window actions
+declare global {
+  interface Window {
+    __chemActions?: {
+      addElement: (symbol: string) => boolean;
+      setCondition: (type: string, custom?: string) => void;
+      evaluate: () => Promise<OrchestrationResult | null>;
+      useProduct: (formula: string) => void;
+      reset: () => void;
+      getState: () => { elements: string[]; compounds: string[]; condition: string; products: string[] };
+    };
+  }
 }
 
 export default function Home() {
@@ -28,7 +43,95 @@ export default function Home() {
   const [conditionType, setConditionType] = useState<string>("none");
   const [customCondition, setCustomCondition] = useState<string>("");
 
-  /** Parse product formulas from equation string like "3Fe + 2O2 -> Fe3O4" */
+  // Evaluate function as a callback for agent usage
+  const evaluateForAgent = useCallback(async (): Promise<OrchestrationResult | null> => {
+    setIsLoading(true);
+    setOrchestration(null);
+    setError(null);
+
+    try {
+      const symbols = selectedElements.map(el => el.symbol);
+      const allReactants = [...symbols, ...selectedCompounds];
+      const catSymbols = catalystElements.map(el => el.symbol);
+
+      let conditionDesc = "Điều kiện thường";
+      if (conditionType === "temperature") conditionDesc = "Có đun nóng (Nhiệt độ cao)";
+      else if (conditionType === "pressure") conditionDesc = "Áp suất cao";
+      else if (conditionType === "catalyst") {
+        conditionDesc = catSymbols.length > 0
+          ? `Có chất xúc tác: ${catSymbols.join(", ")}`
+          : "Có chất xúc tác (chưa xác định)";
+      }
+      else if (conditionType === "custom") conditionDesc = `Điều kiện đặc biệt: ${customCondition}`;
+
+      const res = await fetch("/api/orchestrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ elements: allReactants, condition: conditionDesc }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+
+      setOrchestration(data);
+
+      if (data.isValid && data.equation) {
+        const newProducts = parseProducts(data.equation);
+        setProductHistory((prev) => {
+          const unique = newProducts.filter((p) => !prev.includes(p));
+          return [...prev, ...unique];
+        });
+      }
+      return data;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedElements, selectedCompounds, catalystElements, conditionType, customCondition]);
+
+  // Expose actions on window for ChemAgent to call programmatically
+  useEffect(() => {
+    window.__chemActions = {
+      addElement: (symbol: string) => {
+        const el = (elementsData as ElementData[]).find(
+          (e) => e.symbol.toLowerCase() === symbol.toLowerCase()
+        );
+        if (!el) return false;
+        setSelectedElements((prev) => [...prev, el]);
+        return true;
+      },
+      setCondition: (type: string, custom?: string) => {
+        setConditionType(type);
+        if (custom) setCustomCondition(custom);
+      },
+      evaluate: evaluateForAgent,
+      useProduct: (formula: string) => {
+        setSelectedCompounds((prev) =>
+          prev.includes(formula) ? prev : [...prev, formula]
+        );
+      },
+      reset: () => {
+        setSelectedElements([]);
+        setSelectedCompounds([]);
+        setCatalystElements([]);
+        setConditionType("none");
+        setCustomCondition("");
+        setOrchestration(null);
+        setError(null);
+      },
+      getState: () => ({
+        elements: selectedElements.map((e) => e.symbol),
+        compounds: selectedCompounds,
+        condition: conditionType,
+        products: productHistory,
+      }),
+    };
+    return () => { delete window.__chemActions; };
+  }, [selectedElements, selectedCompounds, conditionType, customCondition, catalystElements, productHistory, evaluateForAgent]);
+
   const parseProducts = (equation: string): string[] => {
     const sides = equation.split(/->/)[1] || equation.split(/→/)[1];
     if (!sides) return [];
